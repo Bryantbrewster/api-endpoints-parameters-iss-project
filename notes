@@ -1,0 +1,28 @@
+import requests
+
+# using the get method will help us get the data from the endpoint, and save the response as a variable
+response = requests.get(url="http://api.open-notify.org/iss-now.json")
+
+# if I print the response variable, it will show a response code
+
+# 1XX: Hold On
+# 2XX: Here You Go
+# 3XX: Go Away (likely no access)
+# 4XX: You Screwed Up
+# 5XX: The Server Screwed Up
+
+# using .raise_for_status() will help give a better description of the response code errors
+response.raise_for_status()
+
+# assigning the actual json data from the response
+data = response.json()
+print(data)
+
+# accessing and assigning the data to variables. This works in the same way as dictionaries
+longitude = data['iss_position']['longitude']
+latitude = data['iss_position']['latitude']
+
+# creating a tuple with the two variables
+iss_position = (longitude, latitude)
+
+print(iss_position)
