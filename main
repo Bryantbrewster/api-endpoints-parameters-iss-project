@@ -1,0 +1,91 @@
+import requests
+import datetime
+import smtplib
+import time
+
+# assigning constants
+my_email = "testingsmtp30@gmail.com"
+password = "Supersecretpassword12345"
+my_lat =39.739235
+my_lng =-104.990250
+
+
+# using the get method will help us get the data from the endpoint, and save the response as a variable
+iss_response = requests.get(url="http://api.open-notify.org/iss-now.json")
+
+# if I print the response variable, it will show a response code
+# 1XX: Hold On
+# 2XX: Here You Go
+# 3XX: Go Away (likely no access)
+# 4XX: You Screwed Up
+# 5XX: The Server Screwed Up
+
+# using .raise_for_status() will help give a better description of the response code errors
+iss_response.raise_for_status()
+
+# assigning the actual json data from the response
+iss_data = iss_response.json()
+print(iss_data)
+
+# accessing and assigning the data to variables. This works in the same way as dictionaries
+iss_longitude = float(iss_data['iss_position']['longitude'])
+iss_latitude = float(iss_data['iss_position']['latitude'])
+
+# creating a tuple with the two variables
+iss_position = (iss_longitude, iss_latitude)
+
+print(f"current iss longitude: {iss_longitude}")
+print(f"current iss latitude: {iss_latitude}")
+print(f"my longitude: {my_lng}")
+print(f"my latitude: {my_lat}")
+
+# calculating what the difference between the ISS lat/long and my current lat/long is at the time of execution
+longitude_difference = abs(abs(my_lng) - abs(iss_longitude))
+latitude_difference = abs(abs(my_lat) - abs(iss_latitude))
+
+
+
+# defining parameters to feed into sunrise-sunset API required, first two params are req.
+parameters = {
+    "lat":my_lat,
+    "lng":my_lng,
+    "formatted": 0,
+}
+
+# requests data from API, and uses .split() to grab the hour #
+response = requests.get('https://api.sunrise-sunset.org/json', params=parameters)
+response.raise_for_status()
+data = response.json()
+# split by "T", then take the second value in the resulting list, and split that further by ":", the assign
+# the very first value (the hour # in UTC time), to their respective variables
+sunrise = int(data['results']['sunrise'].split("T")[1].split(":")[0])
+sunset = int(data['results']['sunset'].split("T")[1].split(":")[0])
+
+
+
+# gets the current time
+time_now = datetime.datetime.now(datetime.timezone.utc)
+
+
+# checks to see if the current ISS lat/long are each within 5 of my lat/long, and then checks to see if it is night
+# in our case: night = between sunset and sunrise, in UTC time. If it passes these two checks then it sends me an email
+# telling me that the ISS is near me in the sky. If left running, this code will execute every 60 seconds due to the
+# time.sleep(60) piece of code
+while True:
+    time.sleep(60)
+    if (longitude_difference < 5) and (latitude_difference < 5):
+        if time_now.hour in range(0, 13):
+            with smtplib.SMTP("smtp.gmail.com",port=587) as connection:
+                connection.starttls()
+                connection.login(user=my_email,password=password)
+                connection.sendmail(
+                    from_addr=my_email,
+                    to_addrs="receivingsmpt30@yahoo.com",
+                    msg="Subject: International Space Station!\n\n The International Space Station is above you in the sky right now!"
+                )
+
+
+# If the ISS is close to my current position (can be + or - 5)
+# AND it is currently dark
+# then send me an email to tell me to look up
+# BONUS: run the code every 60 seconds
